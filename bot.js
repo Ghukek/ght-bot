@@ -170,13 +170,6 @@ client.on("ready", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
-client.on("messageCreate", (message) => {
-  if (message.author.bot) return;
-  if (message.content === "!ping") {
-    message.reply("pong");
-  }
-});
-
 client.login(process.env.DISCORD_TOKEN);
 
 async function sendVerse(interactionOrMessage, input, options = {}) {
@@ -246,7 +239,7 @@ async function sendVerse(interactionOrMessage, input, options = {}) {
         replyText = replyText.slice(0, 1997) + "..."; // leave room for "..."
       }
 
-      if (interactionOrMessage.reply) await interactionOrMessage.reply(replyText);
+      if (interactionOrMessage.reply) await interactionOrMessage.followUp(replyText);
       else interactionOrMessage.channel.send(replyText);
     }
   );
@@ -268,6 +261,8 @@ client.on("messageCreate", message => {
 
 client.on("interactionCreate", async interaction => {
   if (!interaction.isCommand()) return;
+
+  await interaction.deferReply(); // <-- tells Discord "I'm working"
 
   const input = interaction.options.getString("reference");
   const commandName = interaction.commandName;
