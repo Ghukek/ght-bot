@@ -85,6 +85,14 @@ const bookNames = {
     66: "[Revelation]"
 }
 
+// Database stores [word1]_[word2]_[word1] cases as duplicates.
+function getSkipCount(word) {
+  const count = (word.match(/_/g) || []).length;
+  if (count === 2) return 1; // skip next 1 word
+  if (count === 3) return 2; // skip next 2 words
+  return 0;                  // no skip
+}
+
 function parseBook(raw) {
   raw = raw.toLowerCase().trim();
 
@@ -222,24 +230,39 @@ async function sendVerse(interactionOrMessage, input, options = {}) {
       let lastVerse = null;
       let lastChapter = null;
 
-      for (const r of rows) {
+      let skipNext = 0;
+
+      for (let i = 0; i < rows.length; i++) {
+        if (skipNext > 0) {
+          skipNext--;
+          continue; // skip this word
+        }
+
+        const r = rows[i];
         if (!r.word) continue;
+
         const verseId = r.verse_id;
         const chapter = chapterFromVerseId(verseId);
         const verseNum = verseId % 1000;
 
+        // Chapter header
         if (chapter !== lastChapter) {
           output += `\u00A0**${superscript(chapter)}**\u00A0`;
           lastChapter = chapter;
           lastVerse = null;
         }
 
+        // Verse number
         if (verseId !== lastVerse) {
           output += `\u00A0${superscript(verseNum)}\u00A0`;
           lastVerse = verseId;
         }
 
+        // Append word
         output += r.word + " ";
+
+        // Check underscores
+        skipNext = getSkipCount(r.word);
       }
 
       let replyText = output || "(no data)";
