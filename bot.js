@@ -249,8 +249,16 @@ async function sendVerse(interactionOrMessage, input, options = {}) {
         replyText = replyText.slice(0, 1997) + "..."; // leave room for "..."
       }
 
-      if (interactionOrMessage.reply) await interactionOrMessage.followUp(replyText);
-      else interactionOrMessage.channel.send(replyText);
+      if (interactionOrMessage.isCommand && interactionOrMessage.isCommand()) {
+          // It's a slash command interaction
+          await interactionOrMessage.followUp(replyText);
+      } else if (interactionOrMessage.reply) {
+          // It's a normal message
+          await interactionOrMessage.reply(replyText);
+      } else {
+          // Fallback
+          interactionOrMessage.channel.send(replyText);
+      }
     }
   );
 }
