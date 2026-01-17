@@ -1,5 +1,15 @@
 require('dotenv').config();
 
+const express = require("express");
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get("/", (req, res) => res.send("GHTBot running!"));
+
+app.listen(PORT, () => {
+  console.log(`HTTP server listening on port ${PORT}`);
+});
+
 const COMMANDS = {
   "!ght":  { id: "uid",  text: "raw"   },
   "!ghtg": { id: "guid", text: "greek" }
