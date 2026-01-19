@@ -166,13 +166,21 @@ function chapterFromVerseId(vid) {
   return Math.floor((vid % 1_000_000) / 1_000);
 }
 
-const sqlite3 = require("sqlite3").verbose();
-const db = new sqlite3.Database("./concordance.db");
-
-db.get("SELECT name FROM sqlite_master WHERE type='table' LIMIT 1", (err, row) => {
-  if (err) console.error("DB error:", err);
-  else console.log("DB OK, first table:", row?.name);
+const Database = require("better-sqlite3");
+const db = new Database("concordance.db", {
+  readonly: true,
+  fileMustExist: true
 });
+
+try {
+  const row = db
+    .prepare("SELECT name FROM sqlite_master WHERE type='table' LIMIT 1")
+    .get();
+
+  console.log("DB OK, first table:", row?.name);
+} catch (err) {
+  console.error("DB error:", err);
+}
 
 const { Client, GatewayIntentBits } = require("discord.js");
 
@@ -205,85 +213,88 @@ async function sendVerse(interactionOrMessage, input, options = {}) {
 
   const { start, end } = makeBounds(ref);
 
-  db.all(
-    `SELECT CAST(${id} AS INT) AS verse_id, ${text} AS word
-     FROM entries
-     WHERE ${id} BETWEEN ? AND ?
-     ORDER BY ${id}`,
-    [start, end],
-    async (err, rows) => {
-      if (err) {
-        console.error(err);
-        const replyText = "DB error";
-        if (interactionOrMessage.reply) await interactionOrMessage.reply(replyText);
-        else interactionOrMessage.channel.send(replyText);
-        return;
-      }
+  let rows;
 
-      const firstVerseId = rows[0].verse_id;
-      const firstChapter = chapterFromVerseId(firstVerseId);
-      const bookNum = Math.floor(firstVerseId / 1_000_000);
-      const bookName = bookNames[bookNum] ?? "Unknown Book";
-
-      let output = `**${bookName}**\n`; // <-- header line
-
-      let lastVerse = null;
-      let lastChapter = null;
-
-      let skipNext = 0;
-
-      for (let i = 0; i < rows.length; i++) {
-        if (skipNext > 0) {
-          skipNext--;
-          continue; // skip this word
-        }
-
-        const r = rows[i];
-        if (!r.word) continue;
-
-        const verseId = r.verse_id;
-        const chapter = chapterFromVerseId(verseId);
-        const verseNum = verseId % 1000;
-
-        // Chapter header
-        if (chapter !== lastChapter) {
-          output += `\u00A0**${superscript(chapter)}**\u00A0`;
-          lastChapter = chapter;
-          lastVerse = null;
-        }
-
-        // Verse number
-        if (verseId !== lastVerse) {
-          output += `\u00A0${superscript(verseNum)}\u00A0`;
-          lastVerse = verseId;
-        }
-
-        // Append word
-        output += r.word + " ";
-
-        // Check underscores
-        skipNext = getSkipCount(r.word);
-      }
-
-      let replyText = output || "(no data)";
-
-      // Enforce Discord message limit
-      if (replyText.length > 2000) {
-        replyText = replyText.slice(0, 1997) + "..."; // leave room for "..."
-      }
-
-      if (interactionOrMessage.isCommand && interactionOrMessage.isCommand()) {
-          // It's a slash command interaction
-          await interactionOrMessage.followUp(replyText);
-      } else if (interactionOrMessage.reply) {
-          // It's a normal message
-          await interactionOrMessage.reply(replyText);
-      } else {
-          // Fallback
-          interactionOrMessage.channel.send(replyText);
-      }
+  try {
+    const stmt = db.prepare(`
+      SELECT CAST(${id} AS INT) AS verse_id, ${text} AS word
+      FROM entries
+      WHERE ${id} BETWEEN ? AND ?
+      ORDER BY ${id}
+    `);
+    rows = stmt.all(start, end);
+  } catch (err) {
+    console.error(err);
+    const replyText = "DB error";
+    if (interactionOrMessage.reply) {
+      await interactionOrMessage.reply(replyText);
+    } else {
+      interactionOrMessage.channel.send(replyText);
     }
-  );
+    return;
+  }
+
+  if (!rows || rows.length === 0) {
+    const replyText = "(no data)";
+    if (interactionOrMessage.reply) {
+      await interactionOrMessage.reply(replyText);
+    } else {
+      interactionOrMessage.channel.send(replyText);
+    }
+    return;
+  }
+
+  const firstVerseId = rows[0].verse_id;
+  const bookNum = Math.floor(firstVerseId / 1_000_000);
+  const bookName = bookNames[bookNum] ?? "Unknown Book";
+
+  let output = `**${bookName}**\n`;
+
+  let lastVerse = null;
+  let lastChapter = null;
+  let skipNext = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    if (skipNext > 0) {
+      skipNext--;
+      continue;
+    }
+
+    const r = rows[i];
+    if (!r.word) continue;
+
+    const verseId = r.verse_id;
+    const chapter = chapterFromVerseId(verseId);
+    const verseNum = verseId % 1000;
+
+    if (chapter !== lastChapter) {
+      output += `\u00A0**${superscript(chapter)}**\u00A0`;
+      lastChapter = chapter;
+      lastVerse = null;
+    }
+
+    if (verseId !== lastVerse) {
+      output += `\u00A0${superscript(verseNum)}\u00A0`;
+      lastVerse = verseId;
+    }
+
+    output += r.word + " ";
+    skipNext = getSkipCount(r.word);
+  }
+
+  let replyText = output || "(no data)";
+
+  if (replyText.length > 2000) {
+    replyText = replyText.slice(0, 1997) + "...";
+  }
+
+  if (interactionOrMessage.deferred || interactionOrMessage.replied) {
+    await interactionOrMessage.followUp(replyText);
+  } else if (interactionOrMessage.reply) {
+    await interactionOrMessage.reply(replyText);
+  } else {
+    interactionOrMessage.channel.send(replyText);
+  }
 }
 
 client.on("messageCreate", message => {

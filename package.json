@@ -11,9 +11,9 @@
   "license": "Public Domain",
   "type": "commonjs",
   "dependencies": {
+    "better-sqlite3": "^12.6.2",
     "discord.js": "^14.25.1",
     "dotenv": "^17.2.3",
-    "express": "^5.2.1",
-    "sqlite3": "^5.1.7"
+    "express": "^5.2.1"
   }
 }
