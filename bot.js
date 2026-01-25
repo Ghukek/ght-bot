@@ -111,7 +111,7 @@ function parseBook(raw) {
     if (base.startsWith("cor")) return 45 + Number(num); // 1–2 Cor
     if (base.startsWith("thess")) return 51 + Number(num); // 1–2 Thess
     if (base.startsWith("tim")) return 53 + Number(num); // 1–2 Tim
-    if (base.startsWith("pet")) return 60 + Number(num); // 1–2 Pet
+    if (base.startsWith("pet")) return 59 + Number(num); // 1–2 Pet
     if (base.startsWith("john")) return 61 + Number(num); // 1–3 John
   }
 
