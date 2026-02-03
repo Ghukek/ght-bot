@@ -319,10 +319,9 @@ async function sendInterlinear(interactionOrMessage, input, options = {}) {
   try {
     rows = db.prepare(`
       SELECT
-        CAST(uid AS INT)  AS uid,
-        CAST(guid AS INT) AS guid,
-        raw,
-        greek
+        CAST(${order} AS INT) AS verse_id,
+        ${primary},
+        ${secondary}
       FROM entries
       WHERE ${order} BETWEEN ? AND ?
       ORDER BY ${order}
@@ -340,7 +339,7 @@ async function sendInterlinear(interactionOrMessage, input, options = {}) {
       : interactionOrMessage.channel.send("(no data)");
   }
 
-  const firstVerseId = Math.floor(rows[0][order]);
+  const firstVerseId = Math.floor(rows[0]["verse_id"]);
   const bookNum = Math.floor(firstVerseId / 1_000_000);
   const bookName = bookNames[bookNum] ?? "Unknown Book";
 
@@ -351,13 +350,8 @@ async function sendInterlinear(interactionOrMessage, input, options = {}) {
   let skipNext = 0;
 
   for (let i = 0; i < rows.length; i++) {
-    if (skipNext > 0) {
-      skipNext--;
-      continue;
-    }
-
     const r = rows[i];
-    const verseId = Math.floor(r[order]);
+    const verseId = Math.floor(r["verse_id"]);
     const chapter = chapterFromVerseId(verseId);
     const verseNum = verseId % 1000;
 
@@ -372,19 +366,33 @@ async function sendInterlinear(interactionOrMessage, input, options = {}) {
       lastVerse = verseId;
     }
 
-    const main = r[primary];
-    const alt  = r[secondary];
+    let main = r[primary];
+    let alt  = r[secondary];
 
-    if (!main) continue;
-
-    output += `**${main}**`;
-
-    if (alt) {
-      output += ` *${alt}*`;
+    if (skipNext > 0) {
+      if (primary === "raw") {
+        main = "";
+      }
+      if (secondary === "raw") {
+        alt = "";
+      }
+      skipNext--;
     }
 
-    output += " ";
-    skipNext = getSkipCount(main);
+    if (main) {
+        output += `**${main}** `;
+    }
+
+    if (alt) {
+      output += `*${alt}* `;
+    }
+
+    if (primary === "raw") {
+      skipNext = getSkipCount(main);
+    }
+    if (secondary === "raw") {
+      skipNext = getSkipCount(secondary);
+    }
   }
 
   if (output.length > 2000) {
@@ -442,7 +450,7 @@ client.on("interactionCreate", async interaction => {
     return sendInterlinear(interaction, input, {
       order: "guid",
       primary: "greek",
-      secondary: "raw"
+      secondary: "english"
     });
   }
 });
