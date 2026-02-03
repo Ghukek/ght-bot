@@ -188,6 +188,7 @@ const client = new Client({
   intents: [
     GatewayIntentBits.Guilds,
     GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.DirectMessages,
     GatewayIntentBits.MessageContent
   ]
 });
@@ -297,6 +298,108 @@ async function sendVerse(interactionOrMessage, input, options = {}) {
   }
 }
 
+async function sendInterlinear(interactionOrMessage, input, options = {}) {
+  const {
+    order = "uid",        // uid or guid
+    primary = "raw",      // normal text
+    secondary = "greek"   // italic text
+  } = options;
+
+  const ref = parseReference(input);
+  if (!ref) {
+    const msg = "Invalid reference. Use format: Matt 1:1-3";
+    return interactionOrMessage.reply
+      ? interactionOrMessage.reply(msg)
+      : interactionOrMessage.channel.send(msg);
+  }
+
+  const { start, end } = makeBounds(ref);
+
+  let rows;
+  try {
+    rows = db.prepare(`
+      SELECT
+        CAST(uid AS INT)  AS uid,
+        CAST(guid AS INT) AS guid,
+        raw,
+        greek
+      FROM entries
+      WHERE ${order} BETWEEN ? AND ?
+      ORDER BY ${order}
+    `).all(start, end);
+  } catch (err) {
+    console.error(err);
+    return interactionOrMessage.reply
+      ? interactionOrMessage.reply("DB error")
+      : interactionOrMessage.channel.send("DB error");
+  }
+
+  if (!rows.length) {
+    return interactionOrMessage.reply
+      ? interactionOrMessage.reply("(no data)")
+      : interactionOrMessage.channel.send("(no data)");
+  }
+
+  const firstVerseId = Math.floor(rows[0][order]);
+  const bookNum = Math.floor(firstVerseId / 1_000_000);
+  const bookName = bookNames[bookNum] ?? "Unknown Book";
+
+  let output = `**${bookName}**\n`;
+
+  let lastVerse = null;
+  let lastChapter = null;
+  let skipNext = 0;
+
+  for (let i = 0; i < rows.length; i++) {
+    if (skipNext > 0) {
+      skipNext--;
+      continue;
+    }
+
+    const r = rows[i];
+    const verseId = Math.floor(r[order]);
+    const chapter = chapterFromVerseId(verseId);
+    const verseNum = verseId % 1000;
+
+    if (chapter !== lastChapter) {
+      output += `\u00A0**${superscript(chapter)}**\u00A0`;
+      lastChapter = chapter;
+      lastVerse = null;
+    }
+
+    if (verseId !== lastVerse) {
+      output += `\u00A0${superscript(verseNum)}\u00A0`;
+      lastVerse = verseId;
+    }
+
+    const main = r[primary];
+    const alt  = r[secondary];
+
+    if (!main) continue;
+
+    output += `**${main}**`;
+
+    if (alt) {
+      output += ` *${alt}*`;
+    }
+
+    output += " ";
+    skipNext = getSkipCount(main);
+  }
+
+  if (output.length > 2000) {
+    output = output.slice(0, 1997) + "...";
+  }
+
+  if (interactionOrMessage.deferred || interactionOrMessage.replied) {
+    await interactionOrMessage.followUp(output);
+  } else if (interactionOrMessage.reply) {
+    await interactionOrMessage.reply(output);
+  } else {
+    interactionOrMessage.channel.send(output);
+  }
+}
+
 client.on("messageCreate", message => {
   if (message.author.bot) return;
 
@@ -314,13 +417,34 @@ client.on("messageCreate", message => {
 client.on("interactionCreate", async interaction => {
   if (!interaction.isCommand()) return;
 
-  await interaction.deferReply(); // <-- tells Discord "I'm working"
+  await interaction.deferReply();
 
   const input = interaction.options.getString("reference");
-  const commandName = interaction.commandName;
+  const name = interaction.commandName;
 
-  const { id, text } = commandName === "ght" ? { id: "uid", text: "raw" } : { id: "guid", text: "greek" };
+  if (name === "ght") {
+    return sendVerse(interaction, input, { id: "uid", text: "raw" });
+  }
 
-  sendVerse(interaction, input, { id, text });
+  if (name === "ghtg") {
+    return sendVerse(interaction, input, { id: "guid", text: "greek" });
+  }
+
+  if (name === "ghti") {
+    return sendInterlinear(interaction, input, {
+      order: "uid",
+      primary: "raw",
+      secondary: "greek"
+    });
+  }
+
+  if (name === "ghtgi") {
+    return sendInterlinear(interaction, input, {
+      order: "guid",
+      primary: "greek",
+      secondary: "raw"
+    });
+  }
 });
+
 
