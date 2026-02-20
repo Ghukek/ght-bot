@@ -373,7 +373,7 @@ async function sendInterlinear(interactionOrMessage, input, options = {}) {
   const firstVerseId = Math.floor(rows[0]["verse_id"]);
   const bookNum = Math.floor(firstVerseId / 1_000_000);
   let bookName = bookNames[bookNum] ?? "Unknown Book";
-  let bookNameTwo = bookNamesGreek[bookNum] ?? "αγνωστω βιβλος";
+  let bookNameTwo = bookGreekNames[bookNum] ?? "αγνωστω βιβλος";
 
   let output = `**${bookName}**\n`;
 
