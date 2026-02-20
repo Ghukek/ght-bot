@@ -85,6 +85,36 @@ const bookNames = {
     66: "[Revelation]"
 }
 
+const bookGreekNames = {
+    40: "ευαγγελιον κατα ματθαιον",
+    41: "ευαγγελιον κατα μαρκον",
+    42: "ευαγγελιον κατα λογκαν",
+    43: "ευαγγελιον κατα ιωαννην",
+    44: "πραξεις αποστολων",
+    45: "προς ρωμαιους",
+    46: "προς κορινθιους α",
+    47: "προς κορινθιους β",
+    48: "προς γαλατας",
+    49: "προς εφεσιους",
+    50: "προς φιλιππησιους",
+    51: "προς κολοσσαεις",
+    52: "προς θεσσαλονικεις α",
+    53: "προς θεσσαλονικεις β",
+    54: "προς τιμοθεον α",
+    55: "προς τιμοθεον β",
+    56: "προς τιτον",
+    57: "προς φιλημονα",
+    58: "προς εβραιους",
+    59: "[James]",
+    60: "[1 Peter]",
+    61: "[2 Peter]",
+    62: "[1 John]",
+    63: "[2 John]",
+    64: "[3 John]",
+    65: "[Jude]",
+    66: "[Revelation]"
+}
+
 // Database stores [word1]_[word2]_[word1] cases as duplicates.
 function getSkipCount(word) {
   const count = (word.match(/_/g) || []).length;
@@ -247,7 +277,8 @@ async function sendVerse(interactionOrMessage, input, options = {}) {
 
   const firstVerseId = rows[0].verse_id;
   const bookNum = Math.floor(firstVerseId / 1_000_000);
-  const bookName = bookNames[bookNum] ?? "Unknown Book";
+  const names = id === "guid" ? bookGreekNames : bookNames;
+  const bookName = names[bookNum] ?? "Unknown Book";
 
   let output = `**${bookName}**\n`;
 
@@ -341,9 +372,16 @@ async function sendInterlinear(interactionOrMessage, input, options = {}) {
 
   const firstVerseId = Math.floor(rows[0]["verse_id"]);
   const bookNum = Math.floor(firstVerseId / 1_000_000);
-  const bookName = bookNames[bookNum] ?? "Unknown Book";
+  let bookName = bookNames[bookNum] ?? "Unknown Book";
+  let bookNameTwo = bookNamesGreek[bookNum] ?? "αγνωστω βιβλος";
 
   let output = `**${bookName}**\n`;
+
+  if (primary === "raw") {
+    output += `**${bookNameTwo}**\n`;
+  } else {
+    output = `**${bookNameTwo}**\n` + output;
+  }
 
   let lastVerse = null;
   let lastChapter = null;
