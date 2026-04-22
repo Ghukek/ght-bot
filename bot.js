@@ -226,7 +226,7 @@ const client = new Client({
   partials: [Partials.Channel]
 });
 
-client.on("ready", () => {
+client.on("clientReady", () => {
   console.log(`Logged in as ${client.user.tag}`);
 });
 
