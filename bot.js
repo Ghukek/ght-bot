@@ -221,6 +221,7 @@ const client = new Client({
     GatewayIntentBits.DirectMessages,
     GatewayIntentBits.MessageContent
   ]
+  partials: [Partials.Channel]
 });
 
 client.on("ready", () => {
