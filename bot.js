@@ -11,8 +11,10 @@ app.listen(PORT, () => {
 });
 
 const COMMANDS = {
-  "!ght":  { id: "uid",  text: "raw"   },
-  "!ghtg": { id: "guid", text: "greek" }
+  "!ght":   { type: "verse", id: "uid",  text: "raw"   },
+  "!ghtg":  { type: "verse", id: "guid", text: "greek" },
+  "!ghti":  { type: "interlinear", order: "uid",  primary: "raw",   secondary: "greek" },
+  "!ghtgi": { type: "interlinear", order: "guid", primary: "greek", secondary: "english" }
 };
 
 const SUPERSCRIPT = {
@@ -455,10 +457,14 @@ client.on("messageCreate", message => {
 
   if (!cmd) return;
 
-  const { id, text } = COMMANDS[cmd];
+  const config = COMMANDS[cmd];
   const input = message.content.slice(cmd.length).trim();
 
-  sendVerse(message, input, { id, text });
+  if (config.type === "verse") {
+    sendVerse(message, input, config);
+  } else if (config.type === "interlinear") {
+    sendInterlinear(message, input, config);
+  }
 });
 
 client.on("interactionCreate", async interaction => {
