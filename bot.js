@@ -214,7 +214,7 @@ try {
   console.error("DB error:", err);
 }
 
-const { Client, GatewayIntentBits } = require("discord.js");
+const { Client, GatewayIntentBits, Partials } = require("discord.js");
 
 const client = new Client({
   intents: [
