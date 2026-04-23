@@ -1,4 +1,7 @@
-const { REST, Routes, SlashCommandBuilder } = require("discord.js");
+const { REST, Routes, SlashCommandBuilder, 
+        ApplicationCommandType,
+        ApplicationIntegrationType,
+        InteractionContextType } = require("discord.js");
 require("dotenv").config();
 
 const commands = [
@@ -8,21 +11,48 @@ const commands = [
     .addStringOption(opt => 
       opt.setName("reference")
          .setDescription("Book, chapter, verse (e.g., Matt 1:1-3)")
-         .setRequired(true)),
+         .setRequired(true))
+    .setIntegrationTypes([
+      ApplicationIntegrationType.GuildInstall,
+      ApplicationIntegrationType.UserInstall
+    ])
+    .setContexts([
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel
+    ]),
   new SlashCommandBuilder()
     .setName("ghtg")
     .setDescription("Get Bible verses in Greek")
     .addStringOption(opt =>
       opt.setName("reference")
          .setDescription("Book, chapter, verse (e.g., Matt 1:1-3)")
-         .setRequired(true)),
+         .setRequired(true))
+    .setIntegrationTypes([
+      ApplicationIntegrationType.GuildInstall,
+      ApplicationIntegrationType.UserInstall
+    ])
+    .setContexts([
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel
+    ]),
   new SlashCommandBuilder()
     .setName("ghti")
     .setDescription("Get Bible verses in Reverse Interlinear (English, Greek)")
     .addStringOption(opt => 
       opt.setName("reference")
          .setDescription("Book, chapter, verse (e.g., Matt 1:1-3)")
-         .setRequired(true)),
+         .setRequired(true))
+    .setIntegrationTypes([
+      ApplicationIntegrationType.GuildInstall,
+      ApplicationIntegrationType.UserInstall
+    ])
+    .setContexts([
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel
+    ]),
   new SlashCommandBuilder()
     .setName("ghtgi")
     .setDescription("Get Bible verses in Interlinear (Greek, English)")
@@ -30,6 +60,15 @@ const commands = [
       opt.setName("reference")
          .setDescription("Book, chapter, verse (e.g., Matt 1:1-3)")
          .setRequired(true))
+    .setIntegrationTypes([
+      ApplicationIntegrationType.GuildInstall,
+      ApplicationIntegrationType.UserInstall
+    ])
+    .setContexts([
+      InteractionContextType.Guild,
+      InteractionContextType.BotDM,
+      InteractionContextType.PrivateChannel
+    ])
 ].map(cmd => cmd.toJSON());
 
 const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
